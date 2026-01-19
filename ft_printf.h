@@ -19,19 +19,21 @@
 
 typedef struct s_print
 {
-	int		left_justify;		/* '-' flag */
-	int		zero_pad;			/* '0' flag */
-	int		precision;			/* Precisión especificada */
-	int		precision_set;		/* Si se estableció precisión */
-	int		width;				/* Ancho mínimo */
-	int		alternate;			/* '#' flag */
-	int		space;				/* ' ' flag */
-	int		plus;				/* '+' flag */
-	int		neg_precision;		/* Para manejar precisión negativa */
-	int		is_negative;		/* Para números negativos */
-	int		length;				/* Modificadores: h, hh, l, ll */
-	char	specifier;			/* c, s, p, d, i, u, x, X, % */
-}	t_print;
+    // Flags
+    int dash;       // '-'
+    int zero;       // '0'
+    int dot;        // '.' (precisión)
+    int hash;       // '#'
+    int space;      // ' '
+    int plus;       // '+'
+    
+    // Valores
+    int width;      // Ancho mínimo
+    int precision;  // Valor tras el punto
+    char identifier;      // El conversor (c, s, d, etc.)
+    
+    int total_len;  // Contador acumulado para el return final
+} t_print;
 
 
 int	ft_printf(const char *, ...);

@@ -14,16 +14,28 @@
 
 int	ft_printf(const char *, ...)
 {
-	// Implementación de ft_printf aquí
-	return (0);
+	va_list	args;
+	t_print	*print_format;
+	int		i;
+
+	i = 0;
+	va_start(args, format);
+	print_format = NULL;
+
+	return (i);
 }
 
+/*
 #include <stdio.h>
 
 int main(void)
 {
-	printf("Caso 1: %k\n");      // Imprime: Caso 1: k
-    printf("Caso 2: %0j!\n");    // Imprime: Caso 2: 0j!
-    printf("Caso 3: %-10abc\n"); // Imprime: Caso 3: -10abc
-	return (0);
+	printf("ft_printf	|	printf original\n");
+
+    ft_printf("Hello World!	|	");
+	printf("Hellow World!\n");
+
+
+		return (0);
 }
+*/

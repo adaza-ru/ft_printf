@@ -55,27 +55,6 @@ para cada posición i en el string:
             escribir format[j]
 
 
-void init_format(t_format *fmt)
-    // Flags
-    fmt->left_align = 0;
-    fmt->show_sign = 0;  
-    fmt->space = 0;
-    fmt->zero_pad = 0;
-    fmt->alternate = 0;
-    
-    // Width
-    fmt->width = 0;          // 0 = sin width especificado
-    
-    // Precision
-    fmt->precision = -1;     // -1 = sin precisión especificada
-    fmt->precision_set = 0;  // no se encontró '.'
-    
-    // Specifier
-    fmt->specifier = '\0';   // aún no conocido
-
-
-
-
 // Otra información relevante:
 
 #include <stdarg.h>  // Para va_start, va_arg, va_end

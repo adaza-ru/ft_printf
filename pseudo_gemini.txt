@@ -1,0 +1,220 @@
+1. Estructura de Datos (El contenedor)
+
+Primero, necesitas una estructura que se resetee con cada %.
+C
+
+typedef struct s_print
+{
+    // Flags
+    int dash;       // '-'
+    int zero;       // '0'
+    int dot;        // '.' (precisión)
+    int hash;       // '#'
+    int space;      // ' '
+    int plus;       // '+'
+    
+    // Valores
+    int width;      // Ancho mínimo
+    int precision;  // Valor tras el punto
+    char type;      // El conversor (c, s, d, etc.)
+    
+    int total_len;  // Contador acumulado para el return final
+} t_print;
+
+2. Pseudocódigo del Flujo Principal
+C
+
+ENTRADA: (string de formato, argumentos ...)
+1. Inicializar va_list.
+2. Inicializar struct t_print (total_len = 0).
+3. Bucle: Mientras no lleguemos al final del string:
+    - SI el caracter NO ES '%':
+        - write(caracter) y total_len++.
+    - SI el caracter ES '%':
+        - Resetear flags de la struct (a 0 o -1 según convenga).
+        - Avanzar puntero.
+        - LLAMAR A PARSER (puntero al string, struct).
+        - SI el tipo es válido (cspdiuxX%):
+            - LLAMAR A IMPRESOR (va_list, struct).
+        - SINO:
+            - Imprimir el '%' y lo que venía (comportamiento no definido).
+4. va_end y retornar total_len.
+
+3. El Parser (Extracción de información)
+
+Esta función debe avanzar el puntero del string original.
+C
+
+FUNCIÓN PARSER:
+1. Leer FLAGS: Mientras el caracter sea (-0# +):
+    - Activar el flag correspondiente en la struct.
+2. Leer WIDTH: Mientras sea un dígito:
+    - width = (width * 10) + (caracter - '0').
+3. Leer PRECISION: Si es un '.':
+    - Activar dot = 1.
+    - Leer dígitos siguientes para guardar el valor en precision.
+4. Leer TYPE: El caracter actual debe ser uno de (cspdiuxX%).
+    - Guardar en struct->type.
+
+4. Lógica de Impresión (El cerebro del Bonus)
+
+Aquí es donde manejas las prioridades que mencionamos antes. Ejemplo para números enteros (%d):
+C
+
+FUNCIÓN IMPRIMIR_INT:
+1. Obtener número de va_arg (int n).
+2. Determinar si es negativo.
+3. Calcular "Largo Base" (cuántos dígitos tiene el número).
+4. Calcular "Ceros de Precisión":
+    - Si precision > Largo Base: ceros_p = precision - Largo Base.
+5. Calcular "Espacios de Width":
+    - Largo Total = Largo Base + ceros_p + (1 si hay signo/espacio).
+    - Si width > Largo Total: espacios_w = width - Largo Total.
+
+6. PASOS DE ESCRITURA (Orden crítico):
+    - SI NO hay flag '-' y NO hay flag '0': Escribir espacios_w.
+    - Escribir SIGNO ('-', '+' o ' ').
+    - SI NO hay flag '-' y hay flag '0': Escribir espacios_w (como ceros).
+    - Escribir ceros_p (los de la precisión).
+    - Escribir el número (ft_putnbr_base).
+    - SI hay flag '-': Escribir espacios_w restantes.
+
+5. Consideraciones para los Identificadores No Válidos
+
+En tu parser, si después de procesar flags, width y precisión, el carácter no es un conversor válido:
+
+    Opción A (Sencilla): Tu parser se detiene y tú imprimes el % y regresas al bucle principal desde el carácter siguiente al %.
+
+    Opción B (Fiel al original): El printf original a veces imprime la secuencia fallida completa. Para 42, lo más común es que si el identificador es inválido, 
+	el comportamiento es "undefined", pero imprimir el % y el carácter actual suele ser lo que esperan las pruebas.
+
+Diferencias clave que verás en los tests:
+
+    %p: Siempre imprime 0x al principio. Si el puntero es NULL, depende del SO (puede ser (nil) o 0x0).
+
+    %.0d con valor 0: ¡No debe imprimir nada! (La precisión 0 anula el número 0).
+
+    Flag #: Solo añade 0x o 0X si el número no es cero.
+
+// Comentario sobre el otro pseudocodigo:
+
+Tu pseudocódigo es excelente y está muy bien encaminado, especialmente en la parte donde manejas el "Specifier inválido". Al guardar la posición de inicio, 
+aseguras que si alguien escribe algo como %05z, tu programa imprima exactamente eso en lugar de romperse o no imprimir nada.
+
+Sin embargo, hay tres detalles críticos que detecto en tu lógica y que podrían hacerte fallar los tests de la "Moulinette" de 42 si no los ajustas.
+1. El problema del width = 0
+
+En tu punto 3 dices: solo si empieza con dígito 1-9. Ojo: El printf original permite que el width empiece por 0 si ya has procesado los flags.
+
+    Ejemplo: %010d.
+
+    Si tu parser ve el primer 0, lo marca como flag zero_pad.
+
+    Pero si luego viene un 10, ese 10 es el width.
+
+    Si tu código solo busca del 1-9, podrías saltarte casos donde el width es, por ejemplo, 0 (aunque sea redundante) o confundir el flag con el valor.
+
+Corrección sugerida: Una vez que dejes de ver caracteres de "flags", cualquier número que siga (sea 0 o no) debe ser tratado como width.
+
+2. Conflicto de Flags (La jerarquía)
+
+Tu estructura guarda todos los flags, pero no menciona qué pasa si son contradictorios. En el ft_printf de 42, esto es vital:
+
+    - vs 0: Si ambos están presentes (%-05d), el - anula al 0. El relleno debe ser con espacios.
+
+    + vs (espacio): Si ambos están presentes (%+ d), el + anula al espacio. Solo se imprime el +.
+
+Consejo: Puedes manejar esto en el parser (el último que aparece gana) o, mejor aún, en la función de impresión, donde pongas un 
+if (fmt->left_align) fmt->zero_pad = 0;.
+
+3. El Width y el carácter '0'
+
+Mira este caso: %05d. Aquí el 0 es un flag. Pero en %5d, el 5 es el width. Tu lógica actual de separar "Flags" de "Width" es correcta, pero asegúrate de que 
+el bucle de flags no se "coma" un 0 que en realidad debería ser parte de un número.
+
+    Regla: Un 0 justo después del % (o después de otros flags) siempre es un flag. Un 0 que aparece dentro de un número (ej. %10d) es parte del width.
+
+Visualización de la lógica corregida
+
+Para que el proceso sea infalible, la estructura de tu parser debería fluir así:
+4. Una pequeña optimización en init_format
+
+Usas fmt->precision = -1 y fmt->precision_set = 0. Es un poco redundante. Normalmente con poner fmt->precision = -1 basta:
+
+    Si es -1: No hay precisión.
+
+    Si es 0 o más: Hay precisión (incluso si es %.0d).
+
+Ejemplo de error común en el Specifier Inválido
+
+En tu código haces:
+C
+
+para j desde inicio hasta i (inclusive):
+    escribir format[j]
+
+Ten cuidado: si haces esto, el contador de caracteres (total_len) también debe aumentar por cada carácter que imprimas ahí. Si no, tu ft_printf devolverá 
+un número menor al real.
+¿Qué sigue ahora?
+
+Tu lógica de "Calcular antes de imprimir" (que discutimos antes) es lo que debe ir dentro de procesar_especificador.
+
+¿Te gustaría que veamos cómo manejar el caso más difícil de los bonus: el conflicto entre la precisión y el flag 0 en números enteros?
+ (Spoiler: La precisión siempre gana y desactiva el 0).
+
+ El comportamiento de la precisión 0 es, probablemente, la parte más "caprichosa" de todo el proyecto ft_printf. Depende totalmente del tipo de conversor que estés usando.
+
+Aquí tienes el desglose de cómo reacciona el printf original cuando le pasas %.0 o %.:
+1. Números Enteros (%d, %i, %u, %x, %X)
+
+Este es el caso que hace fallar a la mayoría en 42.
+
+    Si el valor es 0: printf("%.0d", 0) no imprime absolutamente nada. Ni siquiera el cero. El retorno de la función será 0.
+
+    Si el valor NO es 0: La precisión 0 se ignora. printf("%.0d", 42) imprime 42.
+
+    Si hay Width: printf("%5.0d", 0) imprimirá 5 espacios en blanco. El "hueco" del número queda vacío porque la precisión 0 anuló al valor 0.
+
+2. Strings (%s)
+
+Para los strings, la precisión indica el máximo de caracteres a imprimir.
+
+    printf("%.0s", "Hola"): No imprime nada.
+
+    Básicamente, cualquier precisión 0 con un string resulta en una cadena vacía, ya que le estás diciendo: "imprime como máximo 0 caracteres".
+
+3. Punteros (%p)
+
+Aquí la cosa se pone interesante y depende del sistema operativo (Linux vs macOS), pero para el estándar general:
+
+    En la mayoría de implementaciones modernas, la precisión en %p se ignora o se comporta como en los enteros.
+
+    Caso crítico 42: Si haces printf("%.0p", NULL), algunas versiones imprimen 0x y otras nada tras el 0x. Sin embargo, el subject de 42 suele ser más flexible con los punteros. Lo más seguro es tratar el puntero como un número hexadecimal de cara a la precisión.
+
+4. Caracteres (%c) y Porcentaje (%%)
+
+    Se ignora completamente.
+
+    printf("%.0c", 'A') imprimirá A. La precisión no tiene sentido para un solo carácter.
+
+Resumen de lógica para tu código
+
+Cuando llegues a la función que imprime números (d, i, u, x), necesitas meter un "guardián" antes de empezar a imprimir:
+C
+
+// Pseudocódigo para el handler de enteros
+if (fmt.precision_set && fmt.precision == 0 && valor_a_imprimir == 0)
+{
+    // Si hay width, imprime solo los espacios
+    while (fmt.width-- > 0)
+        ft_putchar(' ', counter);
+    return ; // NO imprimas el número
+}
+
+Un detalle sobre los flags # y 0
+
+    Con %#x: Si el valor es 0 y la precisión es 0, el flag # no añade el 0x porque el valor es cero. No se imprime nada.
+
+    Con el flag 0 (relleno de ceros): Si hay una precisión (aunque sea 0), el flag 0 se desactiva en los números. Solo se usarán espacios para rellenar el width.
+
+¿Te gustaría que viéramos cómo calcular el total_len en ese caso específico de %.0d con un valor de 0 para que no te descuadre el retorno de la función?

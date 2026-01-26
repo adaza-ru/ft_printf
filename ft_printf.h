@@ -10,30 +10,28 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-//variaticas
-#include <stdarg.h>
-//write
-#include <unistd.h>
-//malloc, free
-#include <stdlib.h>
+#ifndef FT_PRINTF_H
+# define FT_PRINTF_H
+
+# include <stdarg.h>
+# include <unistd.h>
+# include <stdlib.h>
 
 typedef struct s_print
 {
-    // Flags
-    int dash;       // '-'
-    int zero;       // '0'
-    int dot;        // '.' (precisión)
-    int hash;       // '#'
-    int space;      // ' '
-    int plus;       // '+'
-    
-    // Valores
-    int width;      // Ancho mínimo
-    int precision;  // Valor tras el punto
-    char identifier;      // El conversor (c, s, d, etc.)
-    
-    int total_len;  // Contador acumulado para el return final
+	int	dash;
+	int	zero;
+	int dot;
+	int hash;
+	int space;
+	int plus;
+	int width;
+	int precision;
+	char identifier;
 } t_print;
 
 
-int	ft_printf(const char *, ...);
+int		ft_printf(const char *, ...);
+void	init_print_format(t_print *print_format);
+
+#endif

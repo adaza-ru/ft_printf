@@ -1,21 +1,4 @@
 2. Pseudocódigo del Flujo Principal
-C
-
-ENTRADA: (string de formato, argumentos ...)
-1. Inicializar va_list.
-2. Inicializar struct t_print (total_len = 0).
-3. Bucle: Mientras no lleguemos al final del string:
-    - SI el caracter NO ES '%':
-        - write(caracter) y total_len++.
-    - SI el caracter ES '%':
-        - Resetear flags de la struct (a 0 o -1 según convenga).
-        - Avanzar puntero.
-        - LLAMAR A PARSER (puntero al string, struct).
-        - SI el tipo es válido (cspdiuxX%):
-            - LLAMAR A IMPRESOR (va_list, struct).
-        - SINO:
-            - Imprimir el '%' y lo que venía (comportamiento no definido).
-4. va_end y retornar total_len.
 
 3. El Parser (Extracción de información)
 
@@ -36,7 +19,36 @@ FUNCIÓN PARSER:
 4. Lógica de Impresión (El cerebro del Bonus)
 
 Aquí es donde manejas las prioridades que mencionamos antes. Ejemplo para números enteros (%d):
-C
+
+void parse_format(const char **format, t_print *tab, va_list *args)
+{
+    // 1. FLAGS (Bucle mientras haya -0# +)
+    while (**format && ft_strchr("-0# +", **format))
+    {
+        handle_flag_assignment(**format, tab);
+        (*format)++;
+    }
+
+    // 2. WIDTH (Número o *)
+    if (ft_isdigit(**format) || **format == '*')
+        tab->width = parse_width_or_precision(format, args);
+
+    // 3. PRECISION (El punto es el disparador)
+    if (**format == '.')
+    {
+        (*format)++;
+        tab->dot = 1;
+        tab->precision = parse_width_or_precision(format, args);
+        if (tab->precision < 0) // Si %.*d recibe un negativo, la precisión se ignora
+        {
+            tab->dot = 0;
+            tab->precision = -1;
+        }
+    }
+    
+    // 4. IDENTIFIER
+    tab->identifier = **format;
+}
 
 FUNCIÓN IMPRIMIR_INT:
 1. Obtener número de va_arg (int n).
@@ -192,6 +204,170 @@ Un detalle sobre los flags # y 0
 
     Con %#x: Si el valor es 0 y la precisión es 0, el flag # no añade el 0x porque el valor es cero. No se imprime nada.
 
-    Con el flag 0 (relleno de ceros): Si hay una precisión (aunque sea 0), el flag 0 se desactiva en los números. Solo se usarán espacios para rellenar el width.
+    Con el flag 0 (relleno de ceros): Si hay una precisión (aunque sea 0), el flag 0 se desactiva en los números. Solo se 
+	usarán espacios para rellenar el width.
 
-¿Te gustaría que viéramos cómo calcular el total_len en ese caso específico de %.0d con un valor de 0 para que no te descuadre el retorno de la función?
+¿Te gustaría que viéramos cómo calcular el total_len en ese caso específico de %.0d con un valor de 0 para que no te descuadre 
+el retorno de la función?
+
+
+La estrategia eficiente: "El cálculo previo"
+
+En lugar de construir strings, lo mejor es calcular cuánto mide cada parte antes de imprimir nada.
+
+Para un número (por ejemplo %+10.5d con el valor 42), tu lógica debería ser:
+
+    Longitud base: 42 son 2 caracteres.
+
+    Ceros de precisión: Si la precisión es 5, necesito 5−2=3 ceros.
+
+    Signo: Como tiene el flag +, necesito 1 espacio para el +.
+
+    Total acumulado: 3 (ceros)+2 (dıˊgitos)+1 (signo)=6 caracteres.
+
+    Width: Si el width es 10, necesito 10−6=4 espacios de relleno.
+
+¿Cómo manejarlo en el código?
+
+No necesitas un ft_itoa que ponga los ceros. Es mejor tener un ft_itoa normal y manejar la impresión por bloques. 
+Aquí tienes un esquema de cómo se vería tu función para números:
+
+void print_int(t_print *tab, int n)
+{
+    char *s;
+    int len;
+
+    // 1. Caso especial: si n es 0 y precision es 0, el string es ""
+    if (n == 0 && tab->dot && tab->precision == 0)
+        s = ft_strdup("");
+    else
+        s = ft_itoa_unsigned(n < 0 ? -n : n); // Solo el número absoluto
+
+    len = ft_strlen(s);
+    // 2. Calcular cuántos ceros de precisión realmente faltan
+    int prec_zeros = (tab->precision > len) ? tab->precision - len : 0;
+    
+    // 3. Calcular el ancho total que ocupará (número + ceros + signo)
+    int total_data_len = len + prec_zeros + (n < 0 || tab->plus || tab->space);
+
+    // 4. Imprimir en orden
+    if (!tab->dash) // Si no hay alineación a la izquierda, imprimir espacios antes
+        print_width(tab->width - total_data_len, ' ');
+    
+    print_sign(n, tab); // Imprimir '-', '+' o ' '
+    print_width(prec_zeros, '0'); // Imprimir ceros de precisión
+    ft_putstr_fd(s, 1);
+    
+    if (tab->dash) // Si hay alineación a la izquierda, espacios después
+        print_width(tab->width - total_data_len, ' ');
+
+    free(s);
+}
+
+Por qué esto es mejor que "engordar" el itoa:
+
+    Control total: Sabes exactamente cuántos caracteres mandas a write, lo que facilita actualizar tab->total_len.
+
+    Gestión de flags: El flag 0 (zero padding) y la precisión se comportan de forma distinta con el signo. El signo siempre 
+	va antes de los ceros de precisión, pero después de los espacios de ancho (a menos que el flag sea 0 y no haya precisión).
+
+    Memoria: Solo haces un malloc para el número base, no para los rellenos.
+
+Un detalle importante sobre ft_itoa:
+
+El ft_itoa de tu Libft probablemente maneja el signo -. Para ft_printf, te recomiendo hacer una versión que solo devuelva 
+el número en positivo (unsigned) y manejar tú el signo manualmente. Esto te permitirá colocar el + o el - exactamente donde 
+los flags lo requieran.
+
+¿Quieres que veamos cómo gestionar ese caso específico donde el flag 0 se convierte en espacios si hay precisión? Es el 
+error que hace fallar el 90% de los proyectos en el evaluador.
+
+El Gran Director: handle_format
+
+Ahora que tienes tu estructura t_print limpia gracias a apply_hierarchy, necesitas la función que reparte el trabajo. Para ahorrar líneas (Norminette), lo mejor es usar un "selector":
+C
+
+int handle_format(t_print *tab, va_list *args)
+{
+    int len;
+
+    len = 0;
+    if (tab->identifier == 'c')
+        len = print_char(va_arg(*args, int), tab);
+    else if (tab->identifier == 's')
+        len = print_str(va_arg(*args, char *), tab);
+    else if (tab->identifier == 'p')
+        len = print_ptr(va_arg(*args, unsigned long), tab);
+    else if (tab->identifier == 'd' || tab->identifier == 'i')
+        len = print_int(va_arg(*args, int), tab);
+    else if (tab->identifier == 'u')
+        len = print_unsigned(va_arg(*args, unsigned int), tab);
+    else if (tab->identifier == 'x' || tab->identifier == 'X')
+        len = print_hex(va_arg(*args, unsigned int), tab);
+    else if (tab->identifier == '%')
+        len = write(1, "%", 1);
+    return (len);
+}
+
+
+En 42, la regla de oro para el "comportamiento indeterminado" es: No inventes comportamientos.
+
+Si haces un write con un mensaje de error como "Error: invalid identifier", tu ft_printf se comportará de forma muy distinta al original. Esto puede hacer que falles los tests automáticos (como el Francinette) porque esos programas comparan byte a byte la salida de tu función con la de la original.
+
+Aquí tienes lo que deberías hacer según la filosofía de 42:
+1. ¿Qué hace el printf real?
+
+Si pones un identificador inválido, por ejemplo printf("%z"):
+
+    En muchos sistemas, simplemente imprime el carácter inválido: z.
+
+    En otros, imprime %z.
+
+    En otros, no imprime nada.
+
+2. La estrategia en 42
+
+Lo más común y seguro en el proyecto es imprimir el carácter que encontraste (o el % y el carácter) como si fuera texto normal, o simplemente no hacer nada especial y devolver lo que se haya impreso hasta el momento.
+
+Sin embargo, lo más limpio para tu código es: Si después de parsear los flags, el width y la precision, el carácter que sigue no es uno de los permitidos (cspdiuxX%), puedes:
+
+    Tratarlo como si el % no fuera especial.
+
+    O, mejor aún, simplemente no entrar en ninguna función de impresión y dejar que el bucle principal siga.
+
+3. Cómo manejarlo en tu handle_format
+
+En lugar de un error, simplemente pon un else final que no haga nada o que devuelva 0.
+C
+
+int handle_format(t_print *tab, va_list *args)
+{
+    if (tab->identifier == 'c')
+        return (print_char(va_arg(*args, int), tab));
+    // ... todos tus otros casos ...
+    else if (tab->identifier == '%')
+        return (print_char('%', tab));
+    
+    // Si no es ninguno de los anteriores, el subject no te obliga 
+    // a gestionar el error. Lo más normal es no imprimir nada 
+    // de ese bloque específico.
+    return (0); 
+}
+
+4. ¿Por qué no un mensaje de error?
+
+    La Norminette/Subject: El subject de 42 suele decir que no debes gestionar errores de la librería estándar a menos que se especifique.
+
+    Consistencia: El usuario de printf no espera leer "Error" en su salida estándar, espera que el programa sea rápido.
+
+    Puntos de evaluación: Un evaluador te preguntará "¿Por qué imprimes 'Error' si el printf original no lo hace?". Es mejor decir "He seguido el comportamiento de la libc y he decidido ignorar identificadores desconocidos".
+
+Un consejo sobre el % solitario
+
+Un caso que suele dar problemas es cuando el string termina en un % sin nada después: ft_printf("Hola %");.
+
+    Tu parser buscará el identifier en format[i+1], pero encontrará el \0.
+
+    Asegúrate de que tu while(*format) y tu parser no lean memoria fuera de los límites (segfault) si el % es el último carácter del string.
+
+¿Quieres que comprobemos si tu bucle while actual es seguro contra un % al final del string? Es un "edge case" clásico de evaluación.

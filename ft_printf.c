@@ -12,78 +12,61 @@
 
 #include "ft_printf.h"
 
-void apply_hierarchy(t_print *tab)
+int	handle_format(t_print *tab, va_list *args)
 {
-    if (tab->dash)
-        tab->zero = 0;
-    if (tab->plus)
-        tab->space = 0;
-    if (tab->dot && ft_strchr("diuxX", tab->identifier) && tab->precision >= 0)
-        tab->zero = 0;
+	int	len;
+
+	len = 0;
+	if (tab->identifier == 'c')
+		len = handle_char(tab, args);
+	else if (tab->identifier == 's')
+		len = handle_string(tab, args);
+	else if (tab->identifier == 'p')
+		len = handle_pointer(tab, args);
+	else if (tab->identifier == 'd' || tab->identifier == 'i')
+		len = handle_integer(tab, args);
+	else if (tab->identifier == 'u')
+		len = handle_unsigned(tab, args);
+	else if (tab->identifier == 'x' || tab->identifier == 'X')
+		len = handle_hexadecimal(tab, args);
+	else if (tab->identifier == '%')
+		len = handle_percent(tab);
+	return (len);
 }
 
-int	parse_value(const char **format)
+int	eval_format(const char **format, va_list *args)
 {
-	int	n;
+	t_print	tab;
+	int		len;
 
-	n = 0;
-	while (ft_isdigit(**format))
+	init_print_struct(&tab);
+	parse_format(format, &tab);
+	if (tab.identifier == '\0' || !ft_strchr("cspdiuxX%", tab.identifier))
 	{
-		n = (n * 10) + (**format - '0');
-		(*format)++;
+		while (**format != '%')
+			(*format)--;
+		len = write(1, "%", 1);
 	}
-	return (n);
-}
-void parse_flags(const char **format, t_print *tab)
-{
-	if (**format == '-')
-		tab->dash = 1;
-	else if (**format == '0')
-		tab->zero = 1;
-	else if (**format == '#')
-		tab->hash = 1;
-	else if (**format == ' ')
-		tab->space = 1;
-	else if (**format == '+')
-		tab->plus = 1;
-	(*format)++;
-}
-void parse_format(const char **format, t_print *tab)
-{
-    (*format)++;
-    while (**format && ft_strchr("-0# +", **format) != NULL)
-        parse_flags(format, tab);
-    if (ft_isdigit(**format))
-    	tab->width = parse_value(format);
-    if (**format == '.')
-    {
-        (*format)++;
-        tab->dot = 1;
-        tab->precision = parse_value(format);
-    }
-    tab->identifier = **format;
-    apply_hierarchy(tab);
+	else
+		len = handle_format(&tab, args);
+	return (len);
 }
 
 int	ft_printf(const char *format, ...)
 {
 	va_list	args;
-	t_print	print_struct;
 	int		len;
 
 	len = 0;
-		va_start(args, format);
-	while(*format)
+	va_start(args, format);
+	while (*format)
 	{
 		if (*format == '%')
-		{
-			init_print_struct(&print_struct);
-			parse_format(&format, &print_struct);
-			len += handle_format(&print_struct, &args);
-		}
+			len += eval_format(&format, &args);
 		else
 			len += write(1, format, 1);
-		format++;
+		if (*format)
+			format++;
 	}
 	va_end(args);
 	return (len);

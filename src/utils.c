@@ -22,14 +22,6 @@ size_t	ft_strlen(const char *str)
 	return (i);
 }
 
-int	ft_isdigit(int c)
-{
-	if (c >= 48 && c <= 57)
-		return (2048);
-	else
-		return (0);
-}
-
 char	*ft_strchr(const char *s, int c)
 {
 	int				i;
@@ -48,4 +40,17 @@ char	*ft_strchr(const char *s, int c)
 	if (x == '\0')
 		return ((char *)&s[i]);
 	return (NULL);
+}
+
+int	putnbr_base(unsigned long long nbr, char *base)
+{
+	size_t			base_len;
+	int				count;
+
+	base_len = ft_strlen(base);
+	count = 0;
+	if (nbr >= (unsigned long long)base_len)
+		count += putnbr_base(nbr / base_len, base);
+	count += write(1, &base[nbr % base_len], 1);
+	return (count);
 }

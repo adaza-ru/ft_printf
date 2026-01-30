@@ -10,7 +10,15 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ft_printf.h"
+#include "ft_printf_bonus.h"
+
+int	ft_isdigit(int c)
+{
+	if (c >= 48 && c <= 57)
+		return (2048);
+	else
+		return (0);
+}
 
 int	fill(int len, char c)
 {
@@ -36,4 +44,17 @@ void	init_print_struct(t_print *print_struct)
 	print_struct->width = 0;
 	print_struct->precision = -1;
 	print_struct->identifier = '\0';
+}
+
+int	calculate_len(unsigned long long nbr, int base_len)
+{
+	int	len;
+
+	len = 1;
+	while (nbr >= (unsigned long long)base_len)
+	{
+		nbr /= base_len;
+		len++;
+	}
+	return (len);
 }

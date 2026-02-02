@@ -20,10 +20,12 @@ To use the function in your own projects, include the header and link the librar
 
 ```c
 #include "ft_printf.h"
+#include <stdio.h>
 
 int main()
 {
-    ft_printf("Hello %s, the answer is %d\n", "world", 42);
+    printf("Original printf:	\n");
+	ft_printf("42 ft_printf:	\n\n");
     return (0);
 }
 ```

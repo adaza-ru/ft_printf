@@ -30,13 +30,13 @@ int	print_num(t_print *tab, unsigned long long n, char *base, char *prefix)
 	else if (tab->zero && !tab->dot && tab->width > (number_len + prefix_len))
 		zeros = tab->width - (number_len + prefix_len);
 	if (!tab->dash)
-		count += fill(tab->width - (zeros + number_len + prefix_len), ' ');
+		count += fill((tab->width - (zeros + number_len + prefix_len)), ' ');
 	count += write(1, prefix, prefix_len);
 	count += fill(zeros, '0');
 	if (number_len > 0)
 		count += putnbr_base(n, base);
 	if (tab->dash)
-		count += fill(tab->width - (count), ' ');
+		count += fill((tab->width - count), ' ');
 	return (count);
 }
 

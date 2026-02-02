@@ -43,27 +43,25 @@ int	eval_format(const char **format, va_list *args)
 {
 	int	len;
 
+	len = 0;
 	if (!ft_strchr("csdiuxXp%", (*format[1])))
 	{
 		len = write(1, format, 1);
 		return (len);
 	}
-	else
-	{
-		if (**format == 'c')
-			len = handle_char_mandatory(args);
-		else if (**format == 's')
-			len = handle_string_mandatory(args);
-		else if (**format == 'p')
-			len = handle_pointer_mandatory(args);
-		else if (**format == 'd' || **format == 'i')
-			len = handle_integer_mandatory(args);
-		else if (**format == 'u')
-			len = handle_unsigned_mandatory(args);
-		else if (**format == 'x' || **format == 'X')
-			len = handle_hexadecimal_mandatory(args);
-		else if (**format == '%')
-			len = write(1, "%", 1);
-		return (len);
-	}
+	if (**format == 'c')
+		len = handle_char_mandatory(args);
+	else if (**format == 's')
+		len = handle_string_mandatory(args);
+	else if (**format == 'p')
+		len = handle_pointer_mandatory(args);
+	else if (**format == 'd' || **format == 'i')
+		len = handle_integer_mandatory(args);
+	else if (**format == 'u')
+		len = handle_unsigned_mandatory(args);
+	else if (**format == 'x' || **format == 'X')
+		len = handle_hexadecimal_mandatory(args);
+	else if (**format == '%')
+		len = write(1, "%", 1);
+	return (len);
 }

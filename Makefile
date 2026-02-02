@@ -39,12 +39,13 @@ $(OBJS_DIR)/%.o: $(BONUS_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(NAME): $(COM_OBJS) $(MAN_OBJS)
+	@if [ -f .bonus ]; then $(RM) .bonus $(BN_OBJS); fi
 	ar rcs $(NAME) $(COM_OBJS) $(MAN_OBJS)
-	@$(RM) .bonus
 
 bonus: .bonus
 
 .bonus: $(COM_OBJS) $(BN_OBJS)
+	@if [ ! -f .bonus ]; then $(RM) $(MAN_OBJS); fi
 	ar rcs $(NAME) $(COM_OBJS) $(BN_OBJS)
 	@touch .bonus
 

@@ -84,6 +84,7 @@ int	handle_hexadecimal(t_print *tab, va_list *args)
 	int				count;
 
 	count = 0;
+	base = " ";
 	n = va_arg(*args, unsigned int);
 	prefix = "";
 	if (tab->identifier == 'x')

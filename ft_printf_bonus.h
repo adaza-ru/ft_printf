@@ -13,7 +13,6 @@
 #ifndef FT_PRINTF_BONUS_H
 # define FT_PRINTF_BONUS_H
 
-# include "ft_printf.h"
 # include <stdarg.h>
 # include <unistd.h>
 
@@ -40,7 +39,7 @@ int		handle_char(t_print *tab, va_list *args);
 int		handle_format(t_print *tab, va_list *args);
 int		handle_hexadecimal(t_print *tab, va_list *args);
 int		handle_integer(t_print *tab, va_list *args);
-int		handle_percent(t_print *tab);
+int		handle_percent(void);
 int		handle_pointer(t_print *tab, va_list *args);
 int		handle_string(t_print *tab, va_list *args);
 int		handle_unsigned(t_print *tab, va_list *args);

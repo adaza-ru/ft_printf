@@ -25,17 +25,18 @@ int	handle_char_mandatory(va_list *args)
 
 int	handle_string_mandatory(va_list *args)
 {
-	int		count;
 	char	*str;
 	int		len;
 
-	count = 0;
 	str = va_arg(*args, char *);
 	if (!str)
 		str = "(null)";
-	len = (int)ft_strlen(str);
-	count += write(1, str, len);
-	return (count);
+	len = 0;
+	while (str[len])
+		len++;
+	if (write(1, str, len) == -1)
+		return (-1);
+	return (len);
 }
 
 int	eval_format(const char **format, va_list *args)

@@ -12,16 +12,12 @@
 
 #include "ft_printf_bonus.h"
 
-int	handle_percent(t_print *tab)
+int	handle_percent(void)
 {
 	int	count;
 
 	count = 0;
-	if (!tab->dash)
-		count += fill(tab->width - 1, ' ');
 	count += write(1, "%", 1);
-	if (tab->dash)
-		count += fill(tab->width - 1, ' ');
 	return (count);
 }
 
@@ -42,17 +38,25 @@ int	handle_char(t_print *tab, va_list *args)
 
 int	handle_string(t_print *tab, va_list *args)
 {
-	int		count;
 	char	*str;
 	int		len;
+	int		count;
 
 	count = 0;
 	str = va_arg(*args, char *);
 	if (!str)
+	{
 		str = "(null)";
-	len = (int)ft_strlen(str);
-	if (tab->dot && tab->precision < len)
-		len = tab->precision;
+		len = 6;
+		if (tab->dot && tab->precision < 6)
+			len = 0;
+	}
+	else
+	{
+		len = ft_strlen(str);
+		if (tab->dot && tab->precision < len)
+			len = tab->precision;
+	}
 	if (!tab->dash)
 		count += fill(tab->width - len, ' ');
 	count += write(1, str, len);
@@ -79,7 +83,7 @@ int	handle_format(t_print *tab, va_list *args)
 	else if (tab->identifier == 'x' || tab->identifier == 'X')
 		len = handle_hexadecimal(tab, args);
 	else if (tab->identifier == '%')
-		len = handle_percent(tab);
+		len = handle_percent();
 	return (len);
 }
 

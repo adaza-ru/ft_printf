@@ -1,0 +1,420 @@
+//Pseudocódigo:
+
+para cada posición i en el string:
+    si format[i] != '%':
+        escribir character
+        continuar
+    
+    // Encontramos '%'
+    inicio = i  // guardar posición del %
+    i++  // movernos al siguiente carácter
+    
+    // 1. INICIALIZAR estructura con valores por defecto
+    init_format(&fmt);
+    
+    // 2. PARSEAR FLAGS (pueden estar en cualquier orden)
+    mientras format[i] es uno de '-', '+', ' ', '0', '#':
+        activar flag correspondiente en fmt
+        i++
+    
+    // 3. PARSEAR WIDTH (solo si empieza con dígito 1-9)
+    si format[i] entre '1' y '9':
+        width = 0
+        mientras format[i] entre '0' y '9':
+            width = width * 10 + (format[i] - '0')
+            i++
+        fmt.width = width
+    
+    // 4. PARSEAR PRECISIÓN (si hay '.')
+    si format[i] == '.':
+        fmt.precision_set = 1
+        i++
+        
+        // ¿Hay número después?
+        si format[i] entre '0' y '9':
+            precision = 0
+            mientras format[i] entre '0' y '9':
+                precision = precision * 10 + (format[i] - '0')
+                i++
+            fmt.precision = precision
+        sino:
+            // '.' sin número → precisión = 0
+            fmt.precision = 0
+    
+    // 5. BUSCAR SPECIFIER (OBLIGATORIO)
+    si format[i] es specifier válido ('c', 's', 'd', 'i', 'u', 'x', 'X', 'p', '%'):
+        fmt.specifier = format[i]
+        i++  // consumir specifier
+        
+        // ¡ÉXITO! Procesar con la estructura completa
+        procesar_especificador(&fmt, args)
+    sino:
+        // SPECIFIER INVÁLIDO O NO ENCONTRADO
+        // Imprimir literalmente desde el '%' original
+        para j desde inicio hasta i (inclusive):
+            escribir format[j]
+
+
+// Otra información relevante:
+
+#include <stdarg.h>  // Para va_start, va_arg, va_end
+#include <unistd.h>  // Para write (en lugar de printf)
+
+/* Función auxiliar para escribir un carácter */
+void mi_putchar(char c) {
+    write(1, &c, 1);
+}
+
+/* 
+ * miniprintf ultrasimple - solo maneja:
+ * - Texto normal
+ * - %c para caracteres
+ * - %% para el símbolo %
+ */
+void miniprintf(const char *format, ...) {
+    va_list args;          // Declarar lista de argumentos variables
+    
+    // Inicializar args para acceder a los argumentos después de 'format'
+    va_start(args, format);
+    
+    // Recorrer la cadena de formato carácter por carácter
+    while (*format != '\0') {
+        if (*format == '%') {
+            // Verificar el siguiente carácter
+            format++;  // Avanzar al siguiente carácter
+            
+            switch (*format) {
+                case 'c': {  // %c - imprimir un carácter
+                    // IMPORTANTE: char se promociona a int en argumentos variables
+                    char c = (char)va_arg(args, int);
+                    mi_putchar(c);
+                    break;
+                }
+                case '%': {  // %% - imprimir el símbolo %
+                    mi_putchar('%');
+                    break;
+                }
+                default: {   // Si hay % seguido de algo no reconocido
+                    mi_putchar('%');
+                    mi_putchar(*format);
+                    break;
+                }
+            }
+        } else {
+            // Carácter normal - imprimirlo directamente
+            mi_putchar(*format);
+        }
+        
+        format++;  // Avanzar al siguiente carácter del formato
+    }
+    
+    // Limpiar la lista de argumentos variables
+    va_end(args);
+}
+
+/* Programa principal para probar miniprintf */
+int main(void) {
+    // Prueba 1: Texto normal
+    miniprintf("Hola mundo!\n");
+    
+    // Prueba 2: Caracteres individuales
+    miniprintf("Letra: %c\n", 'A');
+    
+    // Prueba 3: Múltiples caracteres
+    miniprintf("Letras: %c, %c, %c\n", 'X', 'Y', 'Z');
+    
+    // Prueba 4: El símbolo %%
+    miniprintf("Porcentaje: 50%%\n");
+    
+    // Prueba 5: Mezcla de texto y caracteres
+    miniprintf("ASCII: %c = %d, %c = %d\n", 'A', 65, 'a', 97);
+    // Nota: %d no funcionará - solo imprime el % y la d
+    
+    // Prueba 6: Carácter especial (nueva línea)
+    miniprintf("Salto%clinea\n", '\n');
+    
+    return 0;
+}
+
+Versión alternativa con contador de caracteres:
+
+
+#include <stdarg.h>
+#include <unistd.h>
+
+/* Versión que devuelve el número de caracteres impresos (como printf real) */
+int miniprintf_contador(const char *format, ...) {
+    va_list args;
+    int contador = 0;
+    
+    va_start(args, format);
+    
+    while (*format != '\0') {
+        if (*format == '%') {
+            format++;
+            
+            if (*format == 'c') {
+                char c = (char)va_arg(args, int);
+                write(1, &c, 1);
+                contador++;
+            } else if (*format == '%') {
+                write(1, "%", 1);
+                contador++;
+            } else {
+                // No reconocido - imprimir % y el carácter
+                write(1, "%", 1);
+                write(1, format, 1);
+                contador += 2;
+            }
+        } else {
+            write(1, format, 1);
+            contador++;
+        }
+        
+        format++;
+    }
+    
+    va_end(args);
+    return contador;
+}
+
+/* Programa para probar la versión con contador */
+int main(void) {
+    int chars;
+    
+    chars = miniprintf_contador("Test 1: %c%c%c\n", 'a', 'b', 'c');
+    miniprintf_contador("Se imprimieron %d caracteres\n", chars);
+    // Nota: el %d se imprimirá literalmente como "%d"
+    
+    return 0;
+}
+
+typedef struct {
+    int left_align;      // flag '-'
+    int show_sign;       // flag '+'
+    int space;           // flag ' '
+    int zero_pad;        // flag '0'
+    int alternate;       // flag '#'
+    int width;
+    int precision;
+    int precision_set;   // si se especificó precisión
+    char specifier;      // 'd', 's', 'x', etc.
+} t_format;
+
+Algoritmo sugerido (sin buffers ni listas)
+
+    Encuentra % en el string
+
+    Inicializa estructura t_format con valores por defecto
+
+    Parseo secuencial:
+
+        Mientras sea flag, actualiza flags en la struct
+
+        Si es dígito o *, parsea width
+
+        Si es ., parsea precision
+
+        Si es modificador, guarda
+
+        Finalmente specifier (debe existir)
+
+    Si specifier válido: procesa con la información de la struct
+
+    Si specifier inválido: imprime desde el % original
+
+for cada carácter:
+  si no es '%':
+    escribir
+  sino:
+    crear t_format con defaults
+    parsear_flags(&fmt, &format_info)
+    parsear_width(&fmt, &format_info, args)
+    parsear_precision(&fmt, &format_info, args)
+    parsear_modifier(&fmt, &format_info)
+    obtener_specifier(&fmt, &format_info)
+    
+    si specifier válido:
+      procesar_con_formato(format_info, args)
+    sino:
+      escribir '%' + secuencia inválida
+
+t_format fmt;
+
+void init_format(t_format *fmt)
+    // Flags
+    fmt->left_align = 0;
+    fmt->show_sign = 0;  
+    fmt->space = 0;
+    fmt->zero_pad = 0;
+    fmt->alternate = 0;
+    
+    // Width
+    fmt->width = 0;          // 0 = sin width especificado
+    
+    // Precision
+    fmt->precision = -1;     // -1 = sin precisión especificada
+    fmt->precision_set = 0;  // no se encontró '.'
+    
+    // Specifier
+    fmt->specifier = '\0';   // aún no conocido
+
+
+
+Imagino que hago el parseo mientras haya caracteres de formato hasta que encuentro uno que no es de formato o identifier != 0, si idenfitifer = 0 imprimo normal, si identifier != 0 avanzo hasta el identifier e imprimo el formato de mi estructura
+
+¡Exactamente! Pero con un matiz importante. Tu estrategia conceptual es correcta, pero déjame detallar el algoritmo preciso:
+Algoritmo de parseo (sin *, sin modifiers):
+text
+
+para cada posición i en el string:
+    si format[i] != '%':
+        escribir character
+        continuar
+    
+    // Encontramos '%'
+    inicio = i  // guardar posición del %
+    i++  // movernos al siguiente carácter
+    
+    // 1. INICIALIZAR estructura con valores por defecto
+    init_format(&fmt);
+    
+    // 2. PARSEAR FLAGS (pueden estar en cualquier orden)
+    mientras format[i] es uno de '-', '+', ' ', '0', '#':
+        activar flag correspondiente en fmt
+        i++
+    
+    // 3. PARSEAR WIDTH (solo si empieza con dígito 1-9)
+    si format[i] entre '1' y '9':
+        width = 0
+        mientras format[i] entre '0' y '9':
+            width = width * 10 + (format[i] - '0')
+            i++
+        fmt.width = width
+    
+    // 4. PARSEAR PRECISIÓN (si hay '.')
+    si format[i] == '.':
+        fmt.precision_set = 1
+        i++
+        
+        // ¿Hay número después?
+        si format[i] entre '0' y '9':
+            precision = 0
+            mientras format[i] entre '0' y '9':
+                precision = precision * 10 + (format[i] - '0')
+                i++
+            fmt.precision = precision
+        sino:
+            // '.' sin número → precisión = 0
+            fmt.precision = 0
+    
+    // 5. BUSCAR SPECIFIER (OBLIGATORIO)
+    si format[i] es specifier válido ('c', 's', 'd', 'i', 'u', 'x', 'X', 'p', '%'):
+        fmt.specifier = format[i]
+        i++  // consumir specifier
+        
+        // ¡ÉXITO! Procesar con la estructura completa
+        procesar_especificador(&fmt, args)
+    sino:
+        // SPECIFIER INVÁLIDO O NO ENCONTRADO
+        // Imprimir literalmente desde el '%' original
+        para j desde inicio hasta i (inclusive):
+            escribir format[j]
+
+Puntos clave de tu intuición:
+
+    "hasta que encuentro uno que no es de formato" → Correcto, pero con reglas:
+
+        Flags: solo los 5 caracteres específicos
+
+        Width: solo dígitos (y el primer dígito no puede ser 0, ese es flag)
+
+        Precision: solo después de '.' y solo dígitos
+
+        Specifier: carácter final obligatorio
+
+    "identifier != 0" → En nuestro caso sería specifier != '\0'
+
+    "avanzar hasta el identifier" → Sí, pero consumiendo todos los componentes en el camino
+
+Casos específicos que debes manejar:
+Caso 1: %-05d
+
+    % → inicio
+
+    - → flag left_align
+
+    0 → flag zero_pad
+
+    5 → width = 5
+
+    d → specifier = 'd' → VÁLIDO
+
+Caso 2: %-.5d
+
+    % → inicio
+
+    - → flag left_align
+
+    . → precision_set = 1
+
+    5 → precision = 5
+
+    d → specifier = 'd' → VÁLIDO
+
+Caso 3: %-.d (punto sin número)
+
+    % → inicio
+
+    - → flag left_align
+
+    . → precision_set = 1, precision = 0
+
+    d → specifier = 'd' → VÁLIDO
+
+Caso 4: %abc (sin specifier válido)
+
+    % → inicio
+
+    a → ¿flag? NO, ¿width? NO, ¿precisión? NO
+
+    NO hay specifier válido → INVALIDO
+
+    Imprimir %abc literalmente
+
+Caso 5: %5 (termina antes del specifier)
+
+    % → inicio
+
+    5 → width = 5
+
+    Fin de string sin specifier → INVALIDO
+
+    Imprimir %5 literalmente
+
+Tu pregunta sobre "avanzar":
+
+Sí, avanzas el índice i mientras parseas. Al final:
+
+    Si encontraste specifier válido: i apunta al siguiente carácter después del specifier
+
+    Si NO encontraste specifier válido: i apunta al primer carácter inválido
+
+Ejemplo visual:
+text
+
+String: "Num: %-10.5d ok"
+           ↑ i=4 (encontró %)
+           
+Paso a paso:
+1. % encontrado en i=4, inicio=4
+2. i=5: '-' → flag left_align, i=6
+3. i=6: '1' → empezar width: width=1, i=7
+4. i=7: '0' → continuar width: width=10, i=8  
+5. i=8: '.' → precision_set=1, i=9
+6. i=9: '5' → precision=5, i=10
+7. i=10: 'd' → specifier='d' → VÁLIDO, i=11
+8. Procesar %-10.5d con argumento
+9. Continuar desde i=11 (espacio antes de "ok")
+
+¡Tu intuición es correcta! El truco está en las reglas precisas de cuándo parar de leer cada componente.

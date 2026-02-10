@@ -39,18 +39,16 @@ int	handle_unsigned_mandatory(va_list *args)
 	return (count);
 }
 
-int	handle_hexadecimal_mandatory(va_list *args)
+int	handle_hexadecimal_mandatory(va_list *args, char c)
 {
 	unsigned int	n;
 	int				count;
-	char			identifier;
 
 	count = 0;
-	identifier = (char)va_arg(*args, int);
 	n = va_arg(*args, unsigned int);
-	if (identifier == 'x')
+	if (c == 'x')
 		count += putnbr_base((unsigned long long)n, "0123456789abcdef");
-	else if (identifier == 'X')
+	else if (c == 'X')
 		count += putnbr_base((unsigned long long)n, "0123456789ABCDEF");
 	return (count);
 }

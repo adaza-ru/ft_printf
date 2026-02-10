@@ -23,7 +23,7 @@ int		handle_char_mandatory(va_list *args);
 int		handle_string_mandatory(va_list *args);
 int		handle_integer_mandatory(va_list *args);
 int		handle_unsigned_mandatory(va_list *args);
-int		handle_hexadecimal_mandatory(va_list *args);
+int		handle_hexadecimal_mandatory(va_list *args, char c);
 int		handle_pointer_mandatory(va_list *args);
 int		putnbr_base(unsigned long long nbr, char *base);
 size_t	ft_strlen(const char *s);

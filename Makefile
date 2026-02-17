@@ -19,43 +19,52 @@ SRCS_DIR    = src
 BONUS_DIR   = src_bonus
 OBJS_DIR    = obj
 
-COM_FILES   = ft_printf.c utils.c
-MAN_FILES   = eval_and_handle_mandatory.c handle_numbers_mandatory.c
-BN_FILES    = eval_and_handle_bonus.c parse_bonus.c \
-				utils_bonus.c handle_numbers_bonus.c
+STATE_MAN   = .mandatory
+STATE_BN    = .bonus
 
-COM_OBJS    = $(addprefix $(OBJS_DIR)/, $(COM_FILES:.c=.o))
-MAN_OBJS    = $(addprefix $(OBJS_DIR)/, $(MAN_FILES:.c=.o))
-BN_OBJS     = $(addprefix $(OBJS_DIR)/, $(BN_FILES:.c=.o))
+SRC         = ft_printf.c eval_and_handle_mandatory.c \
+			utils.c handle_numbers_mandatory.c
+
+BONUS_SRC   = ft_printf_bonus.c utils_bonus.c \
+			eval_and_handle_bonus.c parse_bonus.c \
+			handle_numbers_bonus.c bonus_utils_bonus.c
+
+MAN_OBJS    = $(addprefix $(OBJS_DIR)/mandatory/, $(SRC:.c=.o))
+BN_OBJS     = $(addprefix $(OBJS_DIR)/bonus/, $(BONUS_SRC:.c=.o))
+
+.PHONY: all bonus clean fclean re
 
 all: $(NAME)
 
-$(OBJS_DIR)/%.o: $(SRCS_DIR)/%.c
+$(NAME): $(STATE_MAN)
+
+bonus: $(STATE_BN)
+
+$(STATE_MAN): $(MAN_OBJS)
+	@$(RM) $(STATE_BN)
+	$(RM) $(NAME)
+	ar rcs $(NAME) $(MAN_OBJS)
+	@touch $(STATE_MAN)
+
+$(STATE_BN): $(BN_OBJS)
+	@$(RM) $(STATE_MAN)
+	$(RM) $(NAME)
+	ar rcs $(NAME) $(BN_OBJS)
+	@touch $(STATE_BN)
+
+$(OBJS_DIR)/mandatory/%.o: $(SRCS_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJS_DIR)/%.o: $(BONUS_DIR)/%.c
+$(OBJS_DIR)/bonus/%.o: $(BONUS_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
-
-$(NAME): $(COM_OBJS) $(MAN_OBJS)
-	@if [ -f .bonus ]; then $(RM) .bonus $(BN_OBJS); fi
-	ar rcs $(NAME) $(COM_OBJS) $(MAN_OBJS)
-
-bonus: .bonus
-
-.bonus: $(COM_OBJS) $(BN_OBJS)
-	@if [ ! -f .bonus ]; then $(RM) $(MAN_OBJS); fi
-	ar rcs $(NAME) $(COM_OBJS) $(BN_OBJS)
-	@touch .bonus
 
 clean:
-	$(RM) $(OBJS_DIR) .bonus
+	$(RM) $(OBJS_DIR) $(STATE_MAN) $(STATE_BN)
 
 fclean: clean
 	$(RM) $(NAME)
 
 re: fclean all
-
-.PHONY: all bonus clean fclean re
 

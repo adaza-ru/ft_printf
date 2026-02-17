@@ -20,13 +20,40 @@ To use the function in your own projects, include the header and link the librar
 
 ```c
 #include "ft_printf.h"
+#include "ft_printf_bonus.h"
 #include <stdio.h>
 
-int main()
+int main(void)
 {
-    printf("Original printf:	\n");
-	ft_printf("42 ft_printf:	\n\n");
-    return (0);
+	int	ret_orig;
+	int	ret_ft;
+
+	char *str = "Prueba: %s | Numero: %d";
+	char *arg_s = "42 Malaga";
+	int arg_i = 42;
+
+	printf("--- COMPARACIÓN DE SALIDA Y RETORNO ---\n\n");
+	printf("Original  : [");
+	ret_orig = printf(str, arg_s, arg_i);
+	fflush(stdout); 
+	
+	printf("] -> Return: %d\n", ret_orig);
+	fflush(stdout);
+
+	printf("ft_printf : [");
+	fflush(stdout); 
+	
+	ret_ft = ft_printf(str, arg_s, arg_i);
+	printf("] -> Return: %d\n", ret_ft);
+	fflush(stdout);
+
+	printf("\n---------------------------------------\n");
+	
+	if (ret_orig == ret_ft)
+		printf("✅ Los valores de retorno coinciden.\n");
+	else
+		printf("❌ Error: Los retornos son diferentes.\n");
+	return (0);
 }
 ```
 

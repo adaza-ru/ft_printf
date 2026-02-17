@@ -1,60 +1,56 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   utils.c                                            :+:      :+:    :+:   */
+/*   utils_libft.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: adaza-ru <adaza-ru@student.42malaga.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/01/28 13:29:51 by adaza-ru          #+#    #+#             */
-/*   Updated: 2026/01/28 13:29:51 by adaza-ru         ###   ########.fr       */
+/*   Created: 2026/01/28 14:35:33 by adaza-ru          #+#    #+#             */
+/*   Updated: 2026/01/28 14:35:33 by adaza-ru         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_printf_bonus.h"
 
-int	ft_isdigit(int c)
+size_t	ft_strlen(const char *str)
 {
-	if (c >= 48 && c <= 57)
-		return (2048);
-	else
-		return (0);
+	size_t	i;
+
+	i = 0;
+	while (str[i])
+		i++;
+	return (i);
 }
 
-int	fill(int len, char c)
+char	*ft_strchr(const char *s, int c)
 {
-	int	count;
+	int				i;
+	unsigned char	x;
 
+	x = (unsigned char)c;
+	i = 0;
+	if (*s == '\0' && c != 0)
+		return (NULL);
+	while (s[i] != '\0')
+	{
+		if (s[i] == x)
+			return ((char *)&s[i]);
+		i++;
+	}
+	if (x == '\0')
+		return ((char *)&s[i]);
+	return (NULL);
+}
+
+int	putnbr_base(unsigned long long nbr, char *base)
+{
+	size_t			base_len;
+	int				count;
+
+	base_len = ft_strlen(base);
 	count = 0;
-	while (len > 0)
-	{
-		count += write(1, &c, 1);
-		len--;
-	}
+	if (nbr >= (unsigned long long)base_len)
+		count += putnbr_base(nbr / base_len, base);
+	count += write(1, &base[nbr % base_len], 1);
 	return (count);
-}
-
-void	init_print_struct(t_print *print_struct)
-{
-	print_struct->dash = 0;
-	print_struct->zero = 0;
-	print_struct->dot = 0;
-	print_struct->hash = 0;
-	print_struct->space = 0;
-	print_struct->plus = 0;
-	print_struct->width = 0;
-	print_struct->precision = -1;
-	print_struct->identifier = '\0';
-}
-
-int	calculate_len(unsigned long long nbr, int base_len)
-{
-	int	len;
-
-	len = 1;
-	while (nbr >= (unsigned long long)base_len)
-	{
-		nbr /= base_len;
-		len++;
-	}
-	return (len);
 }

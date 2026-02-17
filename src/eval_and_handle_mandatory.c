@@ -44,12 +44,11 @@ int	eval_format(const char **format, va_list *args)
 	int	len;
 
 	len = 0;
-	if (!ft_strchr("csdiuxXp%", (*format)[1]))
+	if (!ft_strchr("csdiuxXp%", **format))
 	{
 		len = write(1, format, 1);
 		return (len);
 	}
-	(*format)++;
 	if (**format == 'c')
 		len = handle_char_mandatory(args);
 	else if (**format == 's')

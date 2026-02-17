@@ -24,7 +24,10 @@ int	ft_printf(const char *format, ...)
 	while (*format)
 	{
 		if (*format == '%')
+		{
+			format++;
 			len += eval_format(&format, &args);
+		}
 		else
 			len += write(1, format, 1);
 		if (*format)

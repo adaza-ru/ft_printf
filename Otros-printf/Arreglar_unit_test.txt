@@ -1,3 +1,0 @@
-#include <cstring>: ~/francinette/tests/printf-unit-test/src/source_generator.cpp
-
-#include <cstdint>: ~/francinette/tests/printf-unit-test/src/random_args.cpp

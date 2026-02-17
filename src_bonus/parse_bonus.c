@@ -52,7 +52,6 @@ void	parse_flags(const char **format, t_print *tab)
 
 void	parse_format(const char **format, t_print *tab)
 {
-	(*format)++;
 	while (**format && ft_strchr("-0# +", **format))
 		parse_flags(format, tab);
 	if (ft_isdigit(**format))

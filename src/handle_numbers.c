@@ -10,17 +10,15 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ft_printf_bonus.h"
+#include "ft_printf.h"
 
-int	print_num(t_print *tab, unsigned long long n, char *base, char *prefix)
+void	print_num(t_print *tab, unsigned long long n, char *base, char *prefix)
 {
 	int	number_len;
 	int	prefix_len;
 	int	zeros;
-	int	count;
 
 	zeros = 0;
-	count = 0;
 	prefix_len = ft_strlen(prefix);
 	number_len = calculate_len(n, ft_strlen(base));
 	if (n == 0 && tab->dot && tab->precision == 0)
@@ -30,23 +28,20 @@ int	print_num(t_print *tab, unsigned long long n, char *base, char *prefix)
 	else if (tab->zero && !tab->dot && tab->width > (number_len + prefix_len))
 		zeros = tab->width - (number_len + prefix_len);
 	if (!tab->dash)
-		count += fill((tab->width - (zeros + number_len + prefix_len)), ' ');
-	count += write(1, prefix, prefix_len);
-	count += fill(zeros, '0');
+		fill((tab->width - (zeros + number_len + prefix_len)), ' ');
+	ft_putstr_buffer(prefix);
+	fill(zeros, '0');
 	if (number_len > 0)
-		count += putnbr_base(n, base);
+		putnbr_base(n, base);
 	if (tab->dash)
-		count += fill((tab->width - count), ' ');
-	return (count);
+		fill((tab->width - (zeros + number_len + prefix_len)), ' ');
 }
 
-int	handle_integer(t_print *tab, va_list *args)
+void	handle_integer(t_print *tab, va_list *args)
 {
 	long long			n;
 	char				*prefix;
-	int					count;
 
-	count = 0;
 	n = va_arg(*args, int);
 	prefix = "";
 	if (n < 0)
@@ -61,29 +56,23 @@ int	handle_integer(t_print *tab, va_list *args)
 		else if (tab->space)
 			prefix = " ";
 	}
-	count += print_num(tab, (unsigned long long)n, "0123456789", prefix);
-	return (count);
+	print_num(tab, (unsigned long long)n, "0123456789", prefix);
 }
 
-int	handle_unsigned(t_print *tab, va_list *args)
+void	handle_unsigned(t_print *tab, va_list *args)
 {
 	unsigned int	n;
-	int				count;
 
-	count = 0;
 	n = va_arg(*args, unsigned int);
-	count += print_num(tab, (unsigned long long)n, "0123456789", "");
-	return (count);
+	print_num(tab, (unsigned long long)n, "0123456789", "");
 }
 
-int	handle_hexadecimal(t_print *tab, va_list *args)
+void	handle_hexadecimal(t_print *tab, va_list *args)
 {
 	unsigned int	n;
 	char			*base;
 	char			*prefix;
-	int				count;
 
-	count = 0;
 	base = " ";
 	n = va_arg(*args, unsigned int);
 	prefix = "";
@@ -98,31 +87,27 @@ int	handle_hexadecimal(t_print *tab, va_list *args)
 		else if (tab->identifier == 'X')
 			prefix = "0X";
 	}
-	count += print_num(tab, (unsigned long long)n, base, prefix);
-	return (count);
+	print_num(tab, (unsigned long long)n, base, prefix);
 }
 
-int	handle_pointer(t_print *tab, va_list *args)
+void	handle_pointer(t_print *tab, va_list *args)
 {
 	unsigned long long	ptr;
-	int					count;
 	int					print_len;
 
-	count = 0;
 	ptr = (unsigned long long)va_arg(*args, void *);
 	print_len = calculate_len(ptr, 16) + 2;
 	if (ptr == 0)
 		print_len = 5;
 	if (!tab->dash && tab->width > print_len)
-		count += fill((tab->width - print_len), ' ');
+		fill((tab->width - print_len), ' ');
 	if (ptr == 0)
-		count += write(1, "(nil)", 5);
+		ft_putstr_buffer("(nil)");
 	else
 	{
-		count += write(1, "0x", 2);
-		count += putnbr_base(ptr, "0123456789abcdef");
+		ft_putstr_buffer("0x");
+		putnbr_base(ptr, "0123456789abcdef");
 	}
 	if (tab->dash && tab->width > print_len)
-		count += fill((tab->width - print_len), ' ');
-	return (count);
+		fill((tab->width - print_len), ' ');
 }

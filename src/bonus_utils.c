@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ft_printf_bonus.h"
+#include "ft_printf.h"
 
 int	ft_isdigit(int c)
 {
@@ -20,17 +20,13 @@ int	ft_isdigit(int c)
 		return (0);
 }
 
-int	fill(int len, char c)
+void	fill(int len, char c)
 {
-	int	count;
-
-	count = 0;
 	while (len > 0)
 	{
-		count += write(1, &c, 1);
+		ft_manage_buffer(c, WRITE);
 		len--;
 	}
-	return (count);
 }
 
 void	init_print_struct(t_print *print_struct)

@@ -42,15 +42,26 @@ char	*ft_strchr(const char *s, int c)
 	return (NULL);
 }
 
-int	putnbr_base(unsigned long long nbr, char *base)
+void	putnbr_base(unsigned long long nbr, char *base)
 {
 	size_t			base_len;
-	int				count;
 
 	base_len = ft_strlen(base);
-	count = 0;
 	if (nbr >= (unsigned long long)base_len)
-		count += putnbr_base(nbr / base_len, base);
-	count += write(1, &base[nbr % base_len], 1);
-	return (count);
+		putnbr_base(nbr / base_len, base);
+	ft_manage_buffer(base[nbr % base_len], WRITE);
+}
+
+void	ft_putstr_buffer(char *str)
+{
+	int	i;
+
+	if (!str)
+		return ;
+	i = 0;
+	while (str[i])
+	{
+		ft_manage_buffer(str[i], WRITE);
+		i++;
+	}
 }

@@ -10,39 +10,32 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "ft_printf_bonus.h"
+#include "ft_printf.h"
 
-int	handle_percent(void)
+void	handle_percent(void)
 {
-	int	count;
-
-	count = 0;
-	count += write(1, "%", 1);
-	return (count);
+	ft_manage_buffer('%', WRITE);
 }
 
-int	handle_char(t_print *tab, va_list *args)
+void	handle_char(t_print *tab, va_list *args)
 {
-	int				count;
 	unsigned char	c;
 
-	count = 0;
 	c = (unsigned char)va_arg(*args, int);
 	if (!tab->dash)
-		count += fill(tab->width - 1, ' ');
-	count += write(1, &c, 1);
+		fill(tab->width - 1, ' ');
+	ft_manage_buffer(c, WRITE);
 	if (tab->dash)
-		count += fill(tab->width - 1, ' ');
-	return (count);
+		fill(tab->width - 1, ' ');
 }
 
-int	handle_string(t_print *tab, va_list *args)
+void	handle_string(t_print *tab, va_list *args)
 {
 	char	*str;
 	int		len;
-	int		count;
+	int		i;
 
-	count = 0;
+	i = 0;
 	str = va_arg(*args, char *);
 	if (!str)
 	{
@@ -58,39 +51,34 @@ int	handle_string(t_print *tab, va_list *args)
 			len = tab->precision;
 	}
 	if (!tab->dash)
-		count += fill(tab->width - len, ' ');
-	count += write(1, str, len);
+		fill(tab->width - len, ' ');
+	while (str[i] && i < len)
+		ft_manage_buffer(str[i++], WRITE);
 	if (tab->dash)
-		count += fill(tab->width - len, ' ');
-	return (count);
+		fill(tab->width - len, ' ');
 }
 
-int	handle_format(t_print *tab, va_list *args)
+void	handle_format(t_print *tab, va_list *args)
 {
-	int	len;
-
-	len = 0;
 	if (tab->identifier == 'c')
-		len = handle_char(tab, args);
+		handle_char(tab, args);
 	else if (tab->identifier == 's')
-		len = handle_string(tab, args);
+		handle_string(tab, args);
 	else if (tab->identifier == 'p')
-		len = handle_pointer(tab, args);
+		handle_pointer(tab, args);
 	else if (tab->identifier == 'd' || tab->identifier == 'i')
-		len = handle_integer(tab, args);
+		handle_integer(tab, args);
 	else if (tab->identifier == 'u')
-		len = handle_unsigned(tab, args);
+		handle_unsigned(tab, args);
 	else if (tab->identifier == 'x' || tab->identifier == 'X')
-		len = handle_hexadecimal(tab, args);
+		handle_hexadecimal(tab, args);
 	else if (tab->identifier == '%')
-		len = handle_percent();
-	return (len);
+		handle_percent();
 }
 
-int	eval_format(const char **format, va_list *args)
+void	eval_format(const char **format, va_list *args, int *err_mod)
 {
 	t_print	tab;
-	int		len;
 
 	init_print_struct(&tab);
 	parse_format(format, &tab);
@@ -98,9 +86,9 @@ int	eval_format(const char **format, va_list *args)
 	{
 		while (**format != '%')
 			(*format)--;
-		len = write(1, "%", 1);
+		ft_manage_buffer('%', WRITE);
+		*err_mod = -1;
 	}
 	else
-		len = handle_format(&tab, args);
-	return (len);
+		handle_format(&tab, args);
 }

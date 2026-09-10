@@ -1,25 +1,59 @@
 *This project has been created as part of the 42 curriculum by adaza-ru.*
 
-# 📖 ft_printf - High-Performance String Formatting
+<div align="center">
 
-## 🚀 Overview
+# ft_printf — High-Performance String Formatting
 
-This project consists of recoding the famous `printf` function from the C standard library (`libc`). While the main educational objective of the 42 curriculum is to master variadic functions (`stdarg.h`) and complex format management, this repository goes a step further.
+**A from-scratch reimplementation of `printf`, refactored past the school requirements into a buffered, syscall-efficient I/O engine.**
 
-Beyond simply parsing flags and specifiers, this implementation features a highly optimized, buffer-based I/O architecture. It is capable of processing various conversion specifiers, flags, field widths, and precisions, mimicking the behavior of the original function while maximizing CPU execution efficiency.
+![C](https://img.shields.io/badge/language-C-00599C?logo=c&logoColor=white)
+![Make](https://img.shields.io/badge/build-Make-red)
+![Static Library](https://img.shields.io/badge/output-static_library-blue)
 
-## 💻 Instructions & Usage
-### Compilation
+</div>
 
-The project is compiled using a Makefile. It includes the standard rules required by the subject.
+---
 
-**To compile** `make` or ``make all``
+## Table of Contents
 
-This will generate the static library file libftprintf.a at the root of the repository.
+- [Overview](#overview)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Architecture & Refactoring: Why Use a Buffer?](#architecture--refactoring-why-use-a-buffer)
+- [Performance & Benchmarking](#performance--benchmarking)
+- [Buffer Size & OS Page Cache](#buffer-size--os-page-cache)
+- [Technical Choices & Algorithm](#technical-choices--algorithm)
+- [Resources](#resources)
+- [Notes](#notes)
 
-### Usage
+---
 
-To use the function in your own projects, include the header and link the library during compilation:
+## Overview
+
+This project recodes the standard C library's `printf` from scratch. The core exercise is mastering variadic functions (`stdarg.h`) and format-string parsing — but this implementation goes further: it replaces the naive, character-by-character output required by the original spec with a **buffered, syscall-efficient I/O architecture**, and benchmarks the result against the unbuffered version to quantify the difference.
+
+It supports the standard conversion specifiers, flags, field widths, and precisions, matching the behavior (and return value) of the original `printf`.
+
+## Getting Started
+
+### Requirements
+
+- A C compiler
+- `make`
+
+### Build
+
+```bash
+git clone https://github.com/adaza-ru/42_ft_printf.git
+cd ft_printf
+make
+```
+
+This generates the static library `libftprintf.a` at the root of the repository.
+
+## Usage
+
+Include the header and link the library when compiling your own project:
 
 ```c
 #include "include/ft_printf.h"
@@ -30,31 +64,31 @@ int main(void)
 	int	ret_orig;
 	int	ret_ft;
 
-	char *str = "Prueba: %s | Numero: %d";
+	char *str = "Test: %s | Number: %d";
 	char *arg_s = "42 Malaga";
 	int arg_i = 42;
 
-	printf("--- COMPARACIÓN DE SALIDA Y RETORNO ---\n\n");
+	printf("--- OUTPUT AND RETURN VALUE COMPARISON ---\n\n");
 	printf("Original  : [");
 	ret_orig = printf(str, arg_s, arg_i);
-	fflush(stdout); 
-	
+	fflush(stdout);
+
 	printf("] -> Return: %d\n", ret_orig);
 	fflush(stdout);
 
 	printf("ft_printf : [");
-	fflush(stdout); 
-	
+	fflush(stdout);
+
 	ret_ft = ft_printf(str, arg_s, arg_i);
 	printf("] -> Return: %d\n", ret_ft);
 	fflush(stdout);
 
 	printf("\n---------------------------------------\n");
-	
+
 	if (ret_orig == ret_ft)
-		printf("✅ Los valores de retorno coinciden.\n");
+		printf("Return values match.\n");
 	else
-		printf("❌ Error: Los retornos son diferentes.\n");
+		printf("Error: return values differ.\n");
 	return (0);
 }
 ```
@@ -64,99 +98,89 @@ cc main.c libftprintf.a -o test_printf
 ./test_printf
 ```
 
-## 🏗️ Architecture & Refactoring: Why Use a Buffer?
+## Architecture & Refactoring: Why Use a Buffer?
 
-### The Standard Project Approach (Subject Constraints)
+### The standard project approach
 
-The 42 `ft_printf` subject explicitly mandates that the function must handle output character by character, effectively prohibiting the use of internal buffers to simplify the understanding of low-level output handling via the `write()` system call. In the standard implementation, every character is processed and sent to the standard output using write`(1, &c, 1)`.
+The 42 `ft_printf` subject requires the function to write output character by character, explicitly prohibiting internal buffers, to keep the focus on the raw `write()` system call. In the baseline implementation, every character triggers `write(1, &c, 1)`.
 
-While this approach is perfect for learning the fundamentals of the system call interface, it introduces a significant I/O Bottleneck. Calling `write()` millions of times interrupts the CPU, forcing it to save the program's state, switch from User Space to Kernel Space (Context Switch), execute the hardware operation, and return.
+That's fine for learning the syscall interface, but it introduces a real I/O bottleneck: each `write()` call interrupts the CPU, forcing a context switch from user space to kernel space, a hardware operation, and back.
 
-### The Refactored Approach (Post-Project Optimization)
+### The refactored approach
 
-Once the project requirements were met, I refactored the underlying printing mechanism to move beyond the subject's constraints. I implemented a static `char buffer[BUFFER_SIZE]` (defaulting to 1024 bytes) located in the `.bss` memory segment to decouple the logic of formatting from the physical transmission of data.
+Once the base requirements were met, I refactored the printing mechanism beyond the subject's constraints. A static `char buffer[BUFFER_SIZE]` (1024 bytes by default, living in `.bss`) decouples formatting logic from the physical transmission of data:
 
-How it works:
+1. The formatting engine processes the full string and its arguments in user space, at CPU clock speed.
+2. Output is pushed into the local static buffer.
+3. A single `write()` call fires only when the buffer hits 1024 bytes, or when formatting is complete.
 
-1. The formatting engine processes the entire string and its variables in User Space at pure CPU clock speed.
+This moves the design from a naive per-character loop to a stream-buffered model closer to how modern standard libraries actually behave.
 
-2. Data is pushed into the local static buffer.
+## Performance & Benchmarking
 
-3. A `write()` system call is only triggered when the buffer reaches its 1024-byte limit, or when the formatting process is completely finished.
+To validate the refactor, I benchmarked execution time and syscall overhead directly.
 
-This refactoring shifts the design from a naive character-by-character loop to an enterprise-grade stream buffer, mirroring the true behavior of modern standard libraries.
+**Setup**
+- Payload: continuous formatting and streaming of **5,000,000 characters**
+- Environment: Linux, profiled with `time` and `strace`
 
-## 📊 Performance & Benchmarking
+**Results — legacy (unbuffered) vs. optimized (`BUFFER_SIZE 1024`)**
 
-To prove the efficiency of this architectural refactoring, I conducted a series of low-level system benchmarks to measure execution time and system call overhead.
+| Metric | Legacy (unbuffered) | Optimized (buffered) | Improvement |
+|---|---|---|---|
+| `write()` syscalls | 5,000,000 calls | ~4,883 calls | 99.90% fewer syscalls |
+| User time (`user`) | 0.320s | 0.030s | ~11x faster |
+| Kernel time (`system`) | 0.740s | 0.000s | Kernel overhead eliminated |
+| Total execution time | 1.061s | 0.035s | ~30x overall speedup |
 
-### 🧪 Benchmark SetupTest
-* **Payload:** Continuous formatting and streaming of **5,000,000 characters**.
-* **Environment:** Linux CPU performance profiling via the `time` and `strace` commands.
+In the legacy version, the CPU spent roughly 70% of its time frozen on context switches. The buffered version drops kernel time to zero, keeping execution entirely in application space.
 
-### 📈 Results: The Cost of Syscalls
+## Buffer Size & OS Page Cache
 
-Comparing the legacy single-character approach with the optimized 1024-byte buffer approach:
+To find the optimal buffer threshold, I re-ran benchmarks while varying `BUFFER_SIZE`.
 
-| Metric | Legacy Version (Unbuffered) |Optimized Version (`BUFFER_SIZE 1024`) |Impact / Improvement |
-| --- | --- | --- | --- |
-| Total `write()` **Syscalls** | 5,000,000 calls | ~4,883 calls | ⬇️ 99.90% Syscalls Saved |
-|User Time (`user`) | 0.320s | 0.030s | 🚀 11x Faster processing |
-| Kernel Time (system) | 0.740s | 0.000s | 🛑 Eradicated OS Overload |
-| Total Execution Time | 1.061s | 0.035s |⚡ 30 x Overall Speedup| 
+During physical-disk integration tests (writing 5,000,000 characters directly to a file), execution time stayed remarkably flat (~0.050s) even with `BUFFER_SIZE` set to 1.
 
-In the legacy version, the CPU spent ~70% of its time frozen, dealing with OS context switches. The buffered version drops Kernel execution time to absolute zero, keeping the flow entirely in the application space.
+The reason is the **Linux VFS page cache**: the kernel groups small writes into 4KB pages in RAM before flushing to disk, masking the cost of unbuffered writes. Relying on that behavior is risky, though — it's an OS implementation detail, not a guarantee. The 1024-byte buffer implemented here guarantees efficient streaming natively, regardless of OS caching policy, socket latency, or unbuffered environments.
 
-## 🎛️ Buffer Size & OS Page Cache Caching
-To find the optimal threshold for the memory buffer, further benchmarks were conducted by altering the `BUFFER_SIZE` macro.
+## Technical Choices & Algorithm
 
-During extreme physical integration tests (writing 5,000,000 characters directly to a physical disk file), execution times remained incredibly homogeneous (around `0.050s`) even with a BUFFER_SIZE of 1.
+The implementation is split into three phases:
 
-This experiment highlighted the efficiency of the **Linux Virtual File System (VFS) Page Cache**. The Linux Kernel intercepts small byte payloads and groups them into `4KB execution pages` in RAM before sending them to the disk. However, relying on the OS to mitigate bad code is dangerous. My `1024` buffer architecture guarantees this optimal streaming behavior natively, protecting the application's throughput regardless of OS caching policies, network socket latencies, or unbuffered external environments.
+1. **Parsing** — a `t_print` structure stores flag values (`-`, `0`, `.`, `#`, ` `, `+`), width, precision, and the conversion identifier.
+2. **Logic hierarchy** — `apply_hierarchy()` resolves flag precedence before printing (e.g. `-` overrides `0`; a set precision on an integer overrides `0` as well).
+3. **Dispatching & printing** — a dispatcher routes to the function matching the identifier (`c`, `s`, `p`, etc.), which computes padding and zeros based on the `t_print` data.
 
-## ⚙️ Technical Choices & Algorithm
+### The `t_print` structure
 
-The project architecture is divided into three logical phases to ensure extensibility and cleanliness:
+Instead of threading multiple variables through every function, all formatting data for a given `%` specifier is encapsulated in one struct:
 
-**1. Parsing:** A `t_print` structure is used to store flag values (`-`, `0`, `.`, `#`, ` `, `+`), width, precision, and the identifier.
+| Member | Type | Purpose |
+|---|---|---|
+| `dash` (`-`) | bool (int) | Left-alignment; padding moves to the right |
+| `zero` (`0`) | bool (int) | Zero-padding instead of spaces (ignored with `-` or precision on integers) |
+| `dot` (`.`) | bool (int) | Precision trigger — distinguishes `%.d` (precision 0) from no precision at all |
+| `hash` (`#`) | bool (int) | Alternate form — adds `0x`/`0X` prefix for `%x`/`%X` |
+| `space` (` `) | bool (int) | Leading space before positive numbers when `+` is absent |
+| `plus` (`+`) | bool (int) | Forces an explicit `+` on positive numbers |
+| `width` | int | Minimum total field width |
+| `precision` | int | Max characters (strings) or min digits (integers) |
+| `identifier` | char | The conversion type (`s`, `d`, `x`, ...) |
 
-**2. Logic Hierarchy:** Before printing, a hierarchy logic is applied (via the apply_hierarchy function). For example, if the `-` flag is present, the `0` flag is ignored; if precision is set for an integer, the `0` flag is also ignored.
+### Example flow
 
-**3. Dispatching & Printing:** A "dispatcher" redirects to specific functions based on the identifier (`c`, `s`, `p`, etc.). These functions calculate the necessary padding (spaces) and zeros before and after printing the actual value, based on the data stored in the structure.
+For `ft_printf("%-10.5d", 42)`:
 
-### Anatomy of the `t_print` Structure
+1. **Init** — all fields start at `0` (`-1` for precision).
+2. **Parse** — `dash = 1`, `width = 10`, `dot = 1`, `precision = 5`, `identifier = 'd'`.
+3. **Print** — `handle_integer` builds `00042` (5 digits for precision) followed by 5 spaces to reach the width of 10.
 
-The `t_print` structure acts as the "brain" of the project. Instead of passing multiple variables between functions, all formatting data for a specific placeholder (the % specifier) is encapsulated into a single block of memory.
+## Resources
 
-| Member| Type |Purpose|
-| --- | --- | --- |
-| dash (`-`) | int (Boolean) | Left-alignment. If set to 1, the content is left-justified, and padding is added to the right.|
-| zero (`0`) | int (Boolean) | Zero-padding. Indicates if empty spaces should be filled with '0' instead of spaces (ignored if - or precision in integers is present). |
-| dot (`.`) | int (Boolean) | Precision trigger. Crucial for distinguishing between a precision of 0 (e.g., `%.d`) and no precision at all.|
-| hash (`#`) | int (Boolean) | Alternate form. For `%x` it adds the `0x` prefix; for `%X` it adds `0X`. |
-| space (` `) | int (Boolean) | Leading space. Leaves a space before positive numbers if no `+` sign is present. |
-| plus (`+`) | int (Boolean) | Explicit sign. Forces positive numbers to display a `+` symbol. |
-| width | int | Minimum field width. The minimum total number of characters to be printed. |
-| precision | int | Precision limit. For strings, it’s the maximum characters; for integers, the minimum number of digits. |
-| identifier | char | The conversion type. Stores the specifier (e.g., `s`, `d`, `x`) to apply the final logic. |
+- `printf(3)` man page
+- `<stdarg.h>` documentation for variadic argument handling
+- Linux kernel VFS and page cache documentation for I/O optimization
 
-### Example Flow
+## Notes
 
-If the user calls `ft_printf("%-10.5d", 42);`:
-
-* **Init:** All structure fields are initialized to `0` (or `-1` for precision).
-
-* **Parse:** `dash = 1`, `width = 10`, `dot = 1`, `precision = 5`, `identifier = 'd'`.
-
-* **Print:** The `handle_integer` function receives this struct. It calculates that it must buffer `00042     ` (5 digits for precision) followed by `5 spaces` (to complete the width of 10).
-
-
-# Resources
-
-The following sources were consulted during the development of this project:
-
-* printf(3) man page
-
-* <stdarg.h> documentation for variadic list management.
-
-* Linux Kernel VFS and Page Cache documentation for I/O optimization.
+Originally built as part of the 42 curriculum, then extended past the subject's constraints as a personal optimization exercise.

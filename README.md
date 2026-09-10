@@ -44,7 +44,7 @@ It supports the standard conversion specifiers, flags, field widths, and precisi
 ### Build
 
 ```bash
-git clone https://github.com/adaza-ru/42_ft_printf.git
+git clone https://github.com/adaza-ru/ft_printf.git
 cd ft_printf
 make
 ```
